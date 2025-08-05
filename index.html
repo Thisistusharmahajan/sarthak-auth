@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF--8">
+    <title>Sarthak - Face Attendance Test</title>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background-color: #f0f2f5; }
+        #container { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); text-align: center; }
+        h1 { color: #333; }
+        video { border: 2px solid #ccc; border-radius: 8px; width: 480px; height: 360px; }
+        #controls { margin-top: 1rem; }
+        input { padding: 0.5rem; border-radius: 4px; border: 1px solid #ccc; margin-right: 0.5rem; }
+        button { padding: 0.5rem 1rem; border: none; border-radius: 4px; color: white; cursor: pointer; font-size: 1rem; }
+        #registerButton { background-color: #007bff; }
+        #recognizeButton { background-color: #28a745; }
+        #status { margin-top: 1rem; font-size: 1.1rem; font-weight: bold; min-height: 24px; }
+        .success { color: #28a745; }
+        .error { color: #dc3545; }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <h1>Sarthak - Biometric Test</h1>
+        <video id="video" autoplay muted></video>
+        <canvas id="canvas" style="display:none;"></canvas>
+        <div id="controls">
+            <input type="text" id="employeeId" placeholder="Enter Employee ID">
+            <button id="registerButton">Register Face</button>
+            <button id="recognizeButton">Mark Attendance</button>
+        </div>
+        <p id="status"></p>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const employeeIdInput = document.getElementById('employeeId');
+        const registerButton = document.getElementById('registerButton');
+        const recognizeButton = document.getElementById('recognizeButton');
+        const statusElement = document.getElementById('status');
+        const BACKEND_URL = 'http://127.0.0.1:5000'; // Flask server URL
+
+        //  webcam access 
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                video.srcObject = stream;
+            })
+            .catch(err => {
+                console.error("Error accessing webcam: ", err);
+                setStatus('Could not access webcam.', true);
+            });
+
+        function setStatus(message, isError = false) {
+            statusElement.textContent = message;
+            statusElement.className = isError ? 'error' : 'success';
+        }
+
+        function captureImage() {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            return canvas.toDataURL('image/jpeg');
+        }
+
+        // Event listener for the Register button
+        registerButton.addEventListener('click', async () => {
+            const employeeId = employeeIdInput.value.trim();
+            if (!employeeId) {
+                setStatus('Please enter an Employee ID to register.', true);
+                return;
+            }
+            setStatus('Processing registration...');
+            const image = captureImage();
+            
+            try {
+                const response = await fetch(`${BACKEND_URL}/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ employeeId, image })
+                });
+                const data = await response.json();
+                setStatus(data.message, response.status !== 200);
+            } catch (error) {
+                setStatus('Failed to connect to the server.', true);
+            }
+        });
+
+        // Event listener for the Mark Attendance button
+        recognizeButton.addEventListener('click', async () => {
+            setStatus('Recognizing face...');
+            const image = captureImage();
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/recognize`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image })
+                });
+                const data = await response.json();
+                setStatus(data.message, response.status !== 200);
+            } catch (error) {
+                setStatus('Failed to connect to the server.', true);
+            }
+        });
+    </script>
+</body>
+</html>

@@ -47,6 +47,13 @@ def base64_to_image(base64_string):
 
     return image
 
+
+@app.route("/")
+def home():
+    return "Hello, Render is working!"
+
+
+
 @app.route('/register', methods=['POST'])
 def register():
     data = request.get_json()
@@ -186,4 +193,4 @@ def recognize():
         return jsonify({"status": "error", "message": f"An unexpected error occurred: {e}"}), 500
     
 if __name__ == '__main__':
-    app.run(host='0.0.0.0',debug=True, port=5000)
+    app.run(host='0.0.0.0',debug=True, port=int(os.environ.get("PORT",5000)))
